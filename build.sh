@@ -7,11 +7,85 @@ npm install
 # Criar diretório src se não existir
 mkdir -p src
 
-# Verificar se o script Python existe e está no lugar correto
-if [ ! -f "src/instagram_downloader.py" ]; then
-    echo "Copiando instagram_downloader.py para src/"
-    cp instagram_downloader.py src/ 2>/dev/null || echo "instagram_downloader.py não encontrado"
-fi
+# Criar o script Python diretamente
+cat > src/instagram_downloader.py << 'EOL'
+import os
+import sys
+import json
+import instaloader
+from moviepy.editor import VideoFileClip
+from pathlib import Path
+
+class InstagramDownloader:
+    def __init__(self):
+        self.loader = instaloader.Instaloader()
+        self.download_path = Path("downloads")
+        self.download_path.mkdir(exist_ok=True)
+
+    def download_and_convert(self, post_url):
+        try:
+            # Extrair o shortcode da URL
+            shortcode = post_url.strip("/").split("/")[-1]
+            
+            # Baixar o post
+            post = instaloader.Post.from_shortcode(self.loader.context, shortcode)
+            
+            # Criar pasta específica para este download
+            post_path = self.download_path / f"{post.owner_username}_{shortcode}"
+            post_path.mkdir(exist_ok=True)
+            
+            # Download do post
+            self.loader.download_post(post, target=str(post_path))
+            
+            # Encontrar o arquivo de vídeo baixado
+            video_file = None
+            for file in post_path.glob("*.mp4"):
+                video_file = file
+                break
+            
+            if not video_file:
+                raise Exception("Nenhum arquivo de vídeo encontrado após o download")
+            
+            # Converter para MP3
+            mp3_path = post_path / f"{video_file.stem}.mp3"
+            video = VideoFileClip(str(video_file))
+            video.audio.write_audiofile(str(mp3_path))
+            video.close()
+            
+            return {
+                "success": True,
+                "mp3_path": str(mp3_path),
+                "message": "Download e conversão concluídos com sucesso"
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": "Erro durante o download ou conversão"
+            }
+
+def main():
+    if len(sys.argv) != 2:
+        result = {
+            "success": False,
+            "error": "URL do Instagram não fornecida",
+            "message": "Use: python instagram_downloader.py <instagram_url>"
+        }
+        print(json.dumps(result))
+        sys.exit(1)
+    
+    url = sys.argv[1]
+    downloader = InstagramDownloader()
+    result = downloader.download_and_convert(url)
+    print(json.dumps(result))
+
+if __name__ == "__main__":
+    main()
+EOL
+
+# Dar permissão de execução ao script Python
+chmod +x src/instagram_downloader.py
 
 # Instalar dependências Python
 pip install -r requirements.txt
@@ -20,4 +94,8 @@ pip install -r requirements.txt
 npm run build
 
 # Verificar o ambiente
-node check_env.js 
+node check_env.js
+
+# Mostrar conteúdo do diretório src para debug
+echo "Conteúdo do diretório src:"
+ls -la src/ 
