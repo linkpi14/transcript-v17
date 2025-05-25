@@ -1,5 +1,5 @@
 // Script de teste para a funcionalidade do Instagram
-const axios = require('axios');
+import axios from 'axios';
 
 async function testInstagramTranscription() {
   try {
