@@ -319,11 +319,23 @@ app.post('/api/transcribe-instagram', async (req, res) => {
     
     // Usar Python para baixar o vídeo do Instagram
     const pythonScript = path.join(__dirname, 'src', 'instagram_downloader.py');
+    console.log('Caminho do script Python:', pythonScript);
+    console.log('Script existe?', fs.existsSync(pythonScript));
     
     // Criar diretório temporário se não existir
     const tempDir = path.join(__dirname, 'temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir);
+    }
+    
+    // Verificar versão do Python
+    try {
+      const pythonVersion = spawn('python3', ['--version']);
+      pythonVersion.stdout.on('data', (data) => {
+        console.log('Versão do Python:', data.toString());
+      });
+    } catch (error) {
+      console.error('Erro ao verificar versão do Python:', error);
     }
     
     // Executar o script Python
@@ -333,15 +345,18 @@ app.post('/api/transcribe-instagram', async (req, res) => {
     let pythonError = '';
     
     python.stdout.on('data', (data) => {
+      console.log('Python stdout:', data.toString());
       pythonData += data.toString();
     });
     
     python.stderr.on('data', (data) => {
+      console.error('Python stderr:', data.toString());
       pythonError += data.toString();
     });
     
     await new Promise((resolve, reject) => {
       python.on('close', (code) => {
+        console.log('Python process exited with code:', code);
         if (code !== 0) {
           reject(new Error(`Python script failed: ${pythonError}`));
         } else {
