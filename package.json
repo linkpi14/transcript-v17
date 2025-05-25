@@ -8,7 +8,8 @@
     "client": "vite",
     "build": "vite build",
     "build:server": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "postinstall": "pip install -r requirements.txt"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -20,12 +21,17 @@
     "fluent-ffmpeg": "^2.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "lucide-react": "^0.263.1"
+    "lucide-react": "^0.263.1",
+    "axios": "^1.6.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
     "vite": "^4.4.5",
     "concurrently": "^8.2.0",
     "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.7.0"
   }
 }
