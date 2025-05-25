@@ -9,7 +9,8 @@
     "build": "vite build",
     "build:server": "node server.js",
     "start": "node server.js",
-    "postinstall": "pip install -r requirements.txt"
+    "postinstall": "pip install -r requirements.txt",
+    "check": "node check_env.js"
   },
   "dependencies": {
     "express": "^4.18.2",
