@@ -1,4 +1,6 @@
 import os
+import sys
+import json
 import instaloader
 from moviepy.editor import VideoFileClip
 from pathlib import Path
@@ -52,8 +54,20 @@ class InstagramDownloader:
                 "message": "Erro durante o download ou conversão"
             }
 
-# Exemplo de uso
-if __name__ == "__main__":
+def main():
+    if len(sys.argv) != 2:
+        result = {
+            "success": False,
+            "error": "URL do Instagram não fornecida",
+            "message": "Use: python instagram_downloader.py <instagram_url>"
+        }
+        print(json.dumps(result))
+        sys.exit(1)
+    
+    url = sys.argv[1]
     downloader = InstagramDownloader()
-    result = downloader.download_and_convert("https://www.instagram.com/reel/DKCl8SvxMAR")
-    print(result) 
+    result = downloader.download_and_convert(url)
+    print(json.dumps(result))
+
+if __name__ == "__main__":
+    main() 
