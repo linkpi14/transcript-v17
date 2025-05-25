@@ -309,22 +309,116 @@ app.post('/api/transcribe-youtube', async (req, res) => {
 
 // Rota para transcrever Instagram
 app.post('/api/transcribe-instagram', async (req, res) => {
+  let mp3Path = null;
+  
   try {
-    const { url, language } = req.body; // Adicionar parâmetro de idioma
+    const { url, language, shouldTranslate = false, shouldFormat = false } = req.body;
     
     console.log('Processando Instagram:', url);
     
-    // Para Instagram, você precisaria usar bibliotecas específicas
-    // Por enquanto, simulação
-    const transcription = `Transcrição simulada do Instagram: ${url}\n\nEsta é uma demonstração. Para Instagram funcionar de verdade, você precisa:\n1. Implementar downloader do Instagram (instaloader, etc.)\n2. Configurar autenticação se necessário\n3. Processar diferentes tipos de mídia (Reels, IGTV, Posts)\n\nO conteúdo seria baixado, convertido para MP3 e transcrito automaticamente.`;
-
-    res.json({ transcription });
-
+    // Usar Python para baixar o vídeo do Instagram
+    const pythonScript = path.join(__dirname, 'src', 'instagram_downloader.py');
+    
+    // Criar diretório temporário se não existir
+    const tempDir = path.join(__dirname, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir);
+    }
+    
+    // Executar o script Python
+    const { spawn } = require('child_process');
+    const python = spawn('python3', [pythonScript, url]);
+    
+    let pythonData = '';
+    let pythonError = '';
+    
+    python.stdout.on('data', (data) => {
+      pythonData += data.toString();
+    });
+    
+    python.stderr.on('data', (data) => {
+      pythonError += data.toString();
+    });
+    
+    await new Promise((resolve, reject) => {
+      python.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Python script failed: ${pythonError}`));
+        } else {
+          resolve();
+        }
+      });
+    });
+    
+    // Parsear o resultado do Python
+    const result = JSON.parse(pythonData);
+    if (!result.success) {
+      throw new Error(result.error || 'Falha ao baixar vídeo do Instagram');
+    }
+    
+    mp3Path = result.mp3_path;
+    
+    // Transcrever com OpenAI
+    let transcription;
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sua-chave-aqui') {
+      console.log('Enviando para Whisper...');
+      
+      const transcriptionParams = {
+        file: fs.createReadStream(mp3Path),
+        model: "whisper-1"
+      };
+      
+      if (language && language !== 'auto') {
+        transcriptionParams.language = language;
+        console.log(`Idioma forçado: ${language}`);
+      } else {
+        console.log('Detecção automática de idioma');
+      }
+      
+      const response = await openai.audio.transcriptions.create(transcriptionParams);
+      transcription = response.text;
+      
+      // Processar o texto se solicitado
+      if (shouldTranslate || shouldFormat) {
+        console.log('Processando texto transcrito...');
+        let processedText = transcription;
+        
+        if (shouldTranslate) {
+          console.log('Traduzindo...');
+          processedText = await translateText(processedText);
+        }
+        
+        if (shouldFormat) {
+          console.log('Formatando...');
+          processedText = await formatText(processedText);
+        }
+        
+        return res.json({
+          originalTranscription: transcription,
+          processedTranscription: processedText,
+          operations: {
+            translated: shouldTranslate,
+            formatted: shouldFormat
+          }
+        });
+      }
+      
+      res.json({ transcription });
+    } else {
+      return res.status(500).json({
+        error: 'Chave da API OpenAI não configurada'
+      });
+    }
   } catch (error) {
     console.error('Erro Instagram:', error);
-    res.status(500).json({ 
-      error: 'Erro ao processar vídeo do Instagram: ' + error.message 
+    res.status(500).json({
+      error: 'Erro ao processar vídeo do Instagram: ' + error.message
     });
+  } finally {
+    // Limpar arquivos temporários
+    if (mp3Path) {
+      cleanupFile(mp3Path);
+    }
   }
 });
 
