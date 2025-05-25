@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -326,7 +327,6 @@ app.post('/api/transcribe-instagram', async (req, res) => {
     }
     
     // Executar o script Python
-    const { spawn } = require('child_process');
     const python = spawn('python3', [pythonScript, url]);
     
     let pythonData = '';
